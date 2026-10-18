@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gemini AI — GradientWaves</title>
+  <meta name="description" content="Gemini AI Chatbot featuring the React Bits GradientWaves WebGL background animation and modern glassmorphic input UI." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Google+Sans+Text:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ==========================================================================
+       1. DESIGN TOKENS & RESET
+       ========================================================================== */
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    :root {
+      /* Theme palette matching GradientWaves */
+      --bg-canvas: #09021a;
+      --horizon-purple: #5227FF;
+      --wave-pink: #FF9FFC;
+      --crest-white: #FFFFFF;
+
+      /* Glass Surfaces */
+      --surface-glass: rgba(13, 8, 30, 0.65);
+      --surface-glass-hover: rgba(25, 16, 55, 0.75);
+      --surface-card: rgba(255, 255, 255, 0.05);
+      --surface-card-hover: rgba(255, 255, 255, 0.10);
+      --border-subtle: rgba(255, 255, 255, 0.12);
+      --border-glow: rgba(255, 159, 252, 0.45);
+
+      /* Typography */
+      --text-main: #f5edff;
+      --text-muted: #c4b5d6;
+      --text-dim: #8b7c9e;
+      --font-heading: 'Google Sans', system-ui, -apple-system, sans-serif;
+      --font-body: 'Google Sans Text', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', Consolas, Monaco, monospace;
+
+      /* Gradients */
+      --grad-gemini: linear-gradient(135deg, #5227FF 0%, #a855f7 50%, #FF9FFC 100%);
+      --grad-text: linear-gradient(75deg, #f5edff 10%, #FF9FFC 50%, #a855f7 80%, #5227FF 100%);
+      --grad-btn: linear-gradient(135deg, #5227FF 0%, #FF9FFC 100%);
+
+      /* Sizing & Radius */
+      --radius-pill: 9999px;
+      --radius-card: 18px;
+      --radius-bubble: 22px;
+    }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      overflow: hidden;
+      background-color: var(--bg-canvas);
+      color: var(--text-main);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* ==========================================================================
+       2. GRADIENT WAVES CANVAS (React Bits Component, WebGL z=0)
+       ========================================================================== */
+    #waves-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      display: block;
+      pointer-events: none;
+    }
+
+    /* Vignette Overlay for Text Legibility */
+    .vignette-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 90% 70% at 50% 115%,
+          rgba(9, 2, 26, 0.78) 0%,
+          rgba(9, 2, 26, 0.40) 50%,
+          transparent 85%),
+        radial-gradient(ellipse 100% 45% at 50% 0%,
+          rgba(9, 2, 26, 0.75) 0%,
+          transparent 80%);
+    }
+
+    /* ==========================================================================
+       3. APP SHELL
+       ========================================================================== */
+    .app-container {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    /* ==========================================================================
+       4. TOP NAVBAR (Gemini Header)
+       ========================================================================== */
+    .top-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 8px;
+      height: 68px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px) saturate(1.3);
+      background: rgba(9, 2, 26, 0.45);
+      border-radius: 0 0 16px 16px;
+      flex-shrink: 0;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      user-select: none;
+    }
+
+    /* Animated Conic Sparkle Logo */
+    .gemini-logo-conic {
+      position: relative;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: conic-gradient(from 0deg, #5227FF, #FF9FFC, #ffffff, #5227FF);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 24px rgba(255, 159, 252, 0.5);
+      animation: spinConic 9s linear infinite;
+      flex-shrink: 0;
+    }
+
+    @keyframes spinConic {
+      to { transform: rotate(360deg); }
+    }
+
+    .logo-core {
+      width: 26px;
+      height: 26px;
+      background: #09021a;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #FF9FFC;
+      font-size: 14px;
+      animation: counterSpin 9s linear infinite;
+    }
+
+    @keyframes counterSpin {
+      to { transform: rotate(-360deg); }
+    }
+
+    .brand-title {
+      font-family: var(--font-heading);
+      font-size: 21px;
+      font-weight: 600;
+      letter-spacing: -0.3px;
+      background: linear-gradient(90deg, #ffffff 0%, #FF9FFC 60%, #c084fc 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .model-badge {
+      font-size: 11px;
+      font-weight: 500;
+      color: #FF9FFC;
+      background: rgba(82, 39, 255, 0.25);
+      border: 1px solid rgba(255, 159, 252, 0.35);
+      padding: 3px 10px;
+      border-radius: var(--radius-pill);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      letter-spacing: 0.3px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #34d399;
+      box-shadow: 0 0 8px #34d399;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .nav-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 14px;
+      font-size: 13px;
+      font-weight: 500;
+      font-family: var(--font-heading);
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-pill);
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+      backdrop-filter: blur(14px);
+    }
+
+    .nav-btn:hover {
+      background: rgba(255, 255, 255, 0.12);
+      border-color: rgba(255, 159, 252, 0.4);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(82, 39, 255, 0.25);
+    }
+
+    .nav-btn svg {
+      width: 15px;
+      height: 15px;
+      stroke-width: 2.2;
+    }
+
+    /* Wave Color Palette Switcher */
+    .palette-toggle-btn {
+      padding: 7px 12px;
+    }
+
+    /* ==========================================================================
+       5. CHAT STREAM SCROLL AREA
+       ========================================================================== */
+    .chat-scroll-area {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 24px 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      scroll-behavior: smooth;
+    }
+
+    .chat-scroll-area::-webkit-scrollbar {
+      width: 5px;
+    }
+    .chat-scroll-area::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    .chat-scroll-area::-webkit-scrollbar-thumb {
+      background: rgba(255, 159, 252, 0.25);
+      border-radius: 4px;
+    }
+
+    /* ==========================================================================
+       6. GEMINI WELCOME HERO & SUGGESTION CARDS
+       ========================================================================== */
+    .welcome-hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      text-align: center;
+      padding: 30px 10px 10px;
+      animation: fadeInHero 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+      max-width: 760px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    @keyframes fadeInHero {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .gemini-big-star {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 24px;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .star-halo {
+      position: absolute;
+      inset: -14px;
+      background: radial-gradient(circle, rgba(255, 159, 252, 0.45) 0%, rgba(82, 39, 255, 0.35) 45%, transparent 75%);
+      filter: blur(16px);
+      border-radius: 50%;
+      animation: haloBreath 4s ease-in-out infinite alternate;
+    }
+
+    @keyframes haloBreath {
+      0% { transform: scale(0.9); opacity: 0.6; }
+      100% { transform: scale(1.3); opacity: 1; }
+    }
+
+    .star-svg-large {
+      width: 64px;
+      height: 64px;
+      position: relative;
+      z-index: 2;
+      filter: drop-shadow(0 0 20px rgba(255, 159, 252, 0.8));
+      animation: floatStar 5s ease-in-out infinite;
+    }
+
+    @keyframes floatStar {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-6px) rotate(4deg); }
+    }
+
+    .hero-title {
+      font-family: var(--font-heading);
+      font-size: 38px;
+      font-weight: 700;
+      line-height: 1.2;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+      background: var(--grad-text);
+      background-size: 250% auto;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: geminiShine 8s ease-in-out infinite alternate;
+    }
+
+    @keyframes geminiShine {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 100% 50%; }
+    }
+
+    .hero-subtitle {
+      font-size: 18px;
+      font-weight: 400;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+    }
+
+    /* 4 Suggestion Cards Grid */
+    .prompt-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      width: 100%;
+      margin-top: 6px;
+    }
+
+    .prompt-card {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: space-between;
+      min-height: 94px;
+      padding: 16px 18px;
+      background: var(--surface-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-card);
+      backdrop-filter: blur(16px);
+      cursor: pointer;
+      text-align: left;
+      transition: all 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+      overflow: hidden;
+    }
+
+    .prompt-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(82, 39, 255, 0.16), rgba(255, 159, 252, 0.16));
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      pointer-events: none;
+    }
+
+    .prompt-card:hover {
+      background: var(--surface-card-hover);
+      border-color: rgba(255, 159, 252, 0.5);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 28px -6px rgba(0, 0, 0, 0.5), 0 0 24px rgba(255, 159, 252, 0.2);
+    }
+
+    .prompt-card:hover::before {
+      opacity: 1;
+    }
+
+    .card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 8px;
+    }
+
+    .card-icon {
+      font-size: 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .card-arrow {
+      color: var(--text-dim);
+      transition: transform 0.2s ease, color 0.2s ease;
+    }
+
+    .prompt-card:hover .card-arrow {
+      color: var(--wave-pink);
+      transform: translateX(4px);
+    }
+
+    .card-title {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-main);
+      line-height: 1.4;
+    }
+
+    /* ==========================================================================
+       7. MESSAGE BUBBLES
+       ========================================================================== */
+    .message-row {
+      display: flex;
+      gap: 14px;
+      width: 100%;
+      animation: messageSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes messageSlideIn {
+      from { opacity: 0; transform: translateY(14px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message-row.user-row {
+      justify-content: flex-end;
+    }
+
+    .message-avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 2px;
+    }
+
+    .avatar-gemini {
+      background: var(--grad-btn);
+      box-shadow: 0 0 16px rgba(255, 159, 252, 0.45);
+    }
+
+    .avatar-gemini svg {
+      width: 18px;
+      height: 18px;
+      fill: #ffffff;
+    }
+
+    .avatar-user {
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .message-content-wrapper {
+      max-width: 82%;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .user-row .message-content-wrapper {
+      align-items: flex-end;
+    }
+
+    .bubble {
+      padding: 13px 18px;
+      border-radius: var(--radius-bubble);
+      font-size: 15px;
+      line-height: 1.65;
+      word-break: break-word;
+    }
+
+    .user-bubble {
+      background: rgba(82, 39, 255, 0.25);
+      border: 1px solid rgba(255, 159, 252, 0.35);
+      border-bottom-right-radius: 6px;
+      color: #ffffff;
+      box-shadow: 0 4px 20px rgba(82, 39, 255, 0.2);
+      backdrop-filter: blur(16px);
+    }
+
+    .gemini-bubble {
+      background: rgba(13, 8, 30, 0.65);
+      border: 1px solid var(--border-subtle);
+      border-top-left-radius: 6px;
+      color: var(--text-main);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+    }
+
+    .gemini-bubble p { margin-bottom: 10px; }
+    .gemini-bubble p:last-child { margin-bottom: 0; }
+    .gemini-bubble h1, .gemini-bubble h2, .gemini-bubble h3 {
+      font-family: var(--font-heading);
+      color: #ffffff;
+      margin: 14px 0 8px;
+    }
+    .gemini-bubble strong { color: #FF9FFC; font-weight: 600; }
+    .gemini-bubble em { color: #c4b5d6; font-style: italic; }
+    .gemini-bubble ul, .gemini-bubble ol { padding-left: 22px; margin: 8px 0 10px; }
+    .gemini-bubble li { margin-bottom: 5px; }
+
+    .gemini-bubble code:not(pre code) {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      background: rgba(82, 39, 255, 0.25);
+      color: #FF9FFC;
+      padding: 2px 6px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 159, 252, 0.2);
+    }
+
+    /* Code Block Box */
+    .code-container {
+      position: relative;
+      margin: 12px 0;
+      border-radius: 12px;
+      background: #090318;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      overflow: hidden;
+    }
+
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 7px 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 12px;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+    }
+
+    .code-copy-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 3px 6px;
+      border-radius: 4px;
+      transition: all 0.2s ease;
+    }
+
+    .code-copy-btn:hover {
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .code-container pre {
+      padding: 14px;
+      overflow-x: auto;
+      font-family: var(--font-mono);
+      font-size: 13.5px;
+      line-height: 1.5;
+      color: #a5f3fc;
+    }
+
+    /* Message Actions */
+    .message-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+      opacity: 0.8;
+      transition: opacity 0.2s ease;
+    }
+    .message-row:hover .message-actions { opacity: 1; }
+
+    .action-icon-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .action-icon-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.08);
+    }
+    .action-icon-btn svg { width: 14px; height: 14px; }
+
+    /* Thinking Bubble */
+    .thinking-bubble {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 18px;
+    }
+    .wave-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      animation: waveBounce 1.3s ease-in-out infinite;
+    }
+    .wave-dot:nth-child(1) { background: #5227FF; animation-delay: 0s; }
+    .wave-dot:nth-child(2) { background: #FF9FFC; animation-delay: 0.2s; }
+    .wave-dot:nth-child(3) { background: #ffffff; animation-delay: 0.4s; }
+
+    @keyframes waveBounce {
+      0%, 80%, 100% { transform: scale(0.65); opacity: 0.4; }
+      40% { transform: scale(1.2); opacity: 1; }
+    }
+    .thinking-text { font-size: 13px; color: var(--text-muted); font-style: italic; }
+
+    /* ==========================================================================
+       8. THE SIGNATURE GEMINI INPUT BOX (HTML, CSS)
+       ========================================================================== */
+    .input-dock-section {
+      padding: 8px 6px 16px;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .gemini-input-pill {
+      position: relative;
+      background: var(--surface-glass);
+      backdrop-filter: blur(28px) saturate(1.4);
+      border-radius: 28px;
+      border: 1px solid var(--border-subtle);
+      box-shadow: 0 10px 36px rgba(0, 0, 0, 0.55), 0 0 1px rgba(255, 255, 255, 0.15);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .gemini-input-pill:focus-within {
+      border-color: rgba(255, 159, 252, 0.65);
+      box-shadow: 0 14px 44px rgba(0, 0, 0, 0.65),
+                  0 0 0 1px rgba(255, 159, 252, 0.4),
+                  0 0 32px rgba(82, 39, 255, 0.35),
+                  0 0 60px rgba(255, 159, 252, 0.2);
+    }
+
+    .input-main-row {
+      display: flex;
+      align-items: flex-end;
+      padding: 10px 14px 10px 18px;
+      gap: 10px;
+    }
+
+    #user-textarea {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--text-main);
+      font-family: var(--font-body);
+      font-size: 15.5px;
+      line-height: 1.5;
+      min-height: 26px;
+      max-height: 160px;
+      resize: none;
+      padding: 3px 0;
+      overflow-y: auto;
+    }
+
+    #user-textarea::placeholder {
+      color: rgba(196, 181, 214, 0.65);
+    }
+
+    .input-actions-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    .pill-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .pill-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #ffffff;
+      transform: scale(1.06);
+    }
+
+    .pill-btn.recording {
+      background: rgba(239, 68, 68, 0.25);
+      color: #ef4444;
+      animation: micPulse 1.2s infinite;
+    }
+
+    @keyframes micPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+    }
+
+    #send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: var(--grad-btn);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+      box-shadow: 0 3px 16px rgba(82, 39, 255, 0.5);
+      flex-shrink: 0;
+    }
+
+    #send-btn:hover:not(:disabled) {
+      transform: scale(1.1);
+      box-shadow: 0 5px 24px rgba(255, 159, 252, 0.7);
+    }
+
+    #send-btn:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    #send-btn svg {
+      width: 18px;
+      height: 18px;
+      stroke-width: 2.4;
+    }
+
+    .input-footer-note {
+      text-align: center;
+      font-size: 11.5px;
+      color: var(--text-dim);
+      margin-top: 8px;
+      letter-spacing: 0.2px;
+    }
+
+    .scroll-bottom-btn {
+      position: absolute;
+      top: -46px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 6px 14px;
+      font-size: 12px;
+      background: rgba(13, 8, 30, 0.85);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-pill);
+      color: var(--text-main);
+      backdrop-filter: blur(12px);
+      cursor: pointer;
+      display: none;
+      align-items: center;
+      gap: 6px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+      z-index: 10;
+    }
+
+    .hidden { display: none !important; }
+
+    @media (max-width: 680px) {
+      .app-container { padding: 0 10px; }
+      .hero-title { font-size: 28px; }
+      .hero-subtitle { font-size: 16px; margin-bottom: 22px; }
+      .prompt-grid { grid-template-columns: 1fr; gap: 10px; }
+      .message-content-wrapper { max-width: 90%; }
+      .top-header { padding: 12px 4px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ========================================================================
+       1. GRADIENT WAVES WEBGL CANVAS (React Bits Component Background)
+       ======================================================================== -->
+  <canvas id="waves-canvas" aria-hidden="true"></canvas>
+  <div class="vignette-overlay" aria-hidden="true"></div>
+
+  <!-- ========================================================================
+       2. APP SHELL
+       ======================================================================== -->
+  <div class="app-container">
+
+    <!-- TOP HEADER -->
+    <header class="top-header">
+      <div class="brand-section">
+        <div class="gemini-logo-conic" aria-hidden="true">
+          <div class="logo-core">✦</div>
+        </div>
+        <h1 class="brand-title">
+          Gemini
+          <span class="model-badge" id="model-badge" title="Active Model">
+            <span class="status-dot"></span>
+            3.8 Flash
+          </span>
+        </h1>
+      </div>
+
+      <div class="nav-actions">
+        <!-- Palette Presets for GradientWaves -->
+        <button class="nav-btn palette-toggle-btn" id="palette-btn" title="Cycle GradientWaves Colors">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <circle cx="12" cy="12" r="5" />
+            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+          </svg>
+          <span id="palette-name">Cyber Waves</span>
+        </button>
+
+        <!-- New Chat Reset Button -->
+        <button class="nav-btn" id="new-chat-btn" title="Start a fresh chat session">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          New chat
+        </button>
+      </div>
+    </header>
+
+    <!-- CHAT MESSAGES SCROLL AREA -->
+    <main class="chat-scroll-area" id="chat-stream" role="log" aria-live="polite">
+
+      <!-- Gemini Welcome Hero State -->
+      <div class="welcome-hero" id="welcome-hero">
+        <div class="gemini-big-star">
+          <div class="star-halo"></div>
+          <svg class="star-svg-large" viewBox="0 0 24 24" fill="none">
+            <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z" fill="url(#hero-star-grad)" />
+            <defs>
+              <linearGradient id="hero-star-grad" x1="0" y1="0" x2="24" y2="24" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#5227FF" />
+                <stop offset="50%" stop-color="#c084fc" />
+                <stop offset="100%" stop-color="#FF9FFC" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+
+        <h2 class="hero-title">Hello, creator</h2>
+        <p class="hero-subtitle">How can I help you today?</p>
+
+        <!-- Suggestion Cards -->
+        <div class="prompt-grid">
+          <div class="prompt-card" data-prompt="Brainstorm 5 innovative project ideas that combine AI with creative design.">
+            <div class="card-top">
+              <span class="card-icon">💡</span>
+              <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </div>
+            <span class="card-title">Brainstorm innovative AI project ideas</span>
+          </div>
+
+          <div class="prompt-card" data-prompt="Explain quantum computing in simple terms with a real-world analogy.">
+            <div class="card-top">
+              <span class="card-icon">⚡</span>
+              <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </div>
+            <span class="card-title">Explain quantum computing simply</span>
+          </div>
+
+          <div class="prompt-card" data-prompt="Write a Python script for an asynchronous task queue with error handling.">
+            <div class="card-top">
+              <span class="card-icon">💻</span>
+              <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </div>
+            <span class="card-title">Write clean Python async code</span>
+          </div>
+
+          <div class="prompt-card" data-prompt="Draft a captivating opening chapter hook for a sci-fi mystery novel.">
+            <div class="card-top">
+              <span class="card-icon">✍️</span>
+              <svg class="card-arrow" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M5 12h14M12 5l7 7-7 7"/>
+              </svg>
+            </div>
+            <span class="card-title">Draft a captivating sci-fi story hook</span>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ========================================================================
+         3. SIGNATURE GEMINI INPUT BOX IN HTML/CSS
+         ======================================================================== -->
+    <div class="input-dock-section">
+
+      <!-- Scroll to bottom button -->
+      <button class="scroll-bottom-btn" id="scroll-bottom-btn">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="6 9 12 15 18 9"></polyline>
+        </svg>
+        Latest message
+      </button>
+
+      <!-- The Pill Input Box -->
+      <div class="gemini-input-pill" id="input-container">
+        <div class="input-main-row">
+
+          <!-- Left Sparkle Helper Button -->
+          <button class="pill-btn" id="inspire-btn" title="Random Inspiration prompt" aria-label="Inspiration">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+            </svg>
+          </button>
+
+          <!-- Auto-expanding Textarea -->
+          <textarea
+            id="user-textarea"
+            placeholder="Ask Gemini anything..."
+            rows="1"
+            aria-label="Prompt input"
+            spellcheck="true"
+          ></textarea>
+
+          <!-- Right Action Buttons -->
+          <div class="input-actions-group">
+            <!-- Voice Input Button (Web Speech API) -->
+            <button class="pill-btn" id="mic-btn" title="Voice input (Speech to text)" aria-label="Microphone">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="23"/>
+                <line x1="8" y1="23" x2="16" y2="23"/>
+              </svg>
+            </button>
+
+            <!-- Gradient Send Button -->
+            <button id="send-btn" title="Send message (Enter)" aria-label="Send message" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" fill="currentColor" stroke="none" />
+              </svg>
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+      <div class="input-footer-note">
+        Gemini may display inaccurate info, including about people, so double-check its responses.
+        <span>· Enter to send · Shift + Enter for new line</span>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ========================================================================
+       4. GRADIENT WAVES WEBGL SCRIPT (React Bits Component Integration)
+       ======================================================================== -->
+  <script type="module">
+    import { Renderer, Program, Mesh, Triangle }
+      from 'https://cdn.jsdelivr.net/npm/ogl@1.0.11/dist/ogl.mjs';
+
+    /* Helper utilities */
+    function hexToRgb(hex) {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+      return result
+        ? [parseInt(result[1], 16) / 255, parseInt(result[2], 16) / 255, parseInt(result[3], 16) / 255]
+        : [1, 1, 1];
+    }
+
+    function detailToSteps(detail) {
+      if (detail === 'low') return 40.0;
+      if (detail === 'high') return 110.0;
+      return 70.0;
+    }
+
+    /* GLSL Shaders from React Bits GradientWaves */
+    const vertex = /* glsl */`#version 300 es
+    in vec2 position;
+    void main() {
+      gl_Position = vec4(position, 0.0, 1.0);
+    }
+    `;
+
+    const fragment = /* glsl */`#version 300 es
+    precision highp float;
+
+    uniform vec2  iResolution;
+    uniform float iTime;
+    uniform float uSpeed;
+    uniform float uAmplitude;
+    uniform float uWaveScale;
+    uniform float uWaveRatio;
+    uniform float uSwell;
+    uniform float uTurbulence;
+    uniform float uTilt;
+    uniform float uZoom;
+    uniform float uHeight;
+    uniform float uFogDepth;
+    uniform float uSteps;
+    uniform float uBrightness;
+    uniform float uOpacity;
+    uniform vec3  uHorizonColor;
+    uniform vec3  uWaveColor;
+    uniform vec3  uCrestColor;
+    uniform vec2  uMouse;
+    uniform float uParallaxStrength;
+    uniform float uGrainIntensity;
+
+    out vec4 fragColor;
+
+    float hash2(vec2 p) {
+      p = fract(p * vec2(234.34, 435.345));
+      p += dot(p, p + 34.23);
+      return fract(p.x * p.y);
+    }
+
+    float waveField(vec2 p, float t) {
+      float spd = t * uSpeed;
+      float s   = uWaveScale;
+      float h   = 0.0;
+
+      h += sin(p.x * s                          + spd          ) * uAmplitude;
+      h += sin(p.y * s * uWaveRatio             + spd * 0.90   ) * uAmplitude;
+      h += sin((p.x + p.y)  * s * 0.60         + spd * 1.10   ) * uAmplitude * 0.55;
+      h += sin((p.x - p.y)  * s * 0.50         + spd * 0.70   ) * uAmplitude * 0.45;
+
+      h += sin(p.x * s * 0.12 + spd * 0.28) * uSwell     * 0.09;
+      h += sin(p.y * s * 0.09 + spd * 0.22) * uSwell     * 0.07;
+
+      h += sin((p.x * 0.8 + p.y)  * s * 0.07 + spd * 0.35) * uTurbulence * 0.065;
+      h += cos((p.x - p.y * 1.20) * s * 0.06 + spd * 0.30) * uTurbulence * 0.055;
+
+      return h;
+    }
+
+    vec3 waveNormal(vec2 p, float t) {
+      const float e = 0.12;
+      float h0 = waveField(p, t);
+      float hx = waveField(p + vec2(e, 0.0), t);
+      float hz = waveField(p + vec2(0.0, e), t);
+      return normalize(vec3(h0 - hx, e, h0 - hz));
+    }
+
+    void main() {
+      vec2 uv = (gl_FragCoord.xy / iResolution.xy) * 2.0 - 1.0;
+      uv.x   *= iResolution.x / iResolution.y;
+
+      uv += uMouse * uParallaxStrength * 0.04;
+
+      float t  = iTime;
+
+      float ct = cos(uTilt), st = sin(uTilt);
+      vec3 camFwd   = vec3(0.0, -ct,  st);
+      vec3 camRight = vec3(1.0,  0.0, 0.0);
+      vec3 camUp    = vec3(0.0,  st,  ct);
+
+      vec3 ro = vec3(uMouse.x * uParallaxStrength * 0.3, uHeight, 0.0);
+
+      vec3 rd = normalize(camFwd
+                        + (uv.x / uZoom) * camRight
+                        + (uv.y / uZoom) * camUp);
+
+      if (rd.y >= -0.001) {
+        float skyT = clamp(dot(rd, camFwd) * 2.5, 0.0, 1.0);
+        fragColor  = vec4(mix(uHorizonColor * 0.25, uHorizonColor, skyT), 0.0);
+        return;
+      }
+
+      float hitDist = -ro.y / rd.y;
+      int steps = int(uSteps);
+      for (int i = 0; i < 110; i++) {
+        if (i >= steps) break;
+        vec3  p  = ro + rd * hitDist;
+        float wh = waveField(p.xz, t);
+        float d  = p.y - wh;
+        if (abs(d) < 0.03) break;
+        hitDist += d * 0.55;
+        if (hitDist > 220.0 || hitDist < 0.0) {
+          fragColor = vec4(uHorizonColor, 0.0);
+          return;
+        }
+      }
+
+      vec3  hitPos = ro + rd * hitDist;
+      float h0     = waveField(hitPos.xz, t);
+
+      float maxH  = uAmplitude * 2.0;
+      float crest = clamp((h0 / maxH) * 0.5 + 0.5, 0.0, 1.0);
+      float sharp = pow(crest, 3.5);
+
+      vec3  nrm  = waveNormal(hitPos.xz, t);
+
+      vec3 col = mix(uHorizonColor, uWaveColor, crest);
+      col      = mix(col, uCrestColor, sharp);
+
+      vec3  lDir = normalize(vec3(0.4, 1.0, 0.6));
+      vec3  hDir = normalize(lDir - rd);
+      float spec = pow(max(dot(nrm, hDir), 0.0), 28.0);
+      col       += uCrestColor * spec * 0.22;
+
+      float fog = exp(-hitDist / uFogDepth);
+      col       = mix(uHorizonColor, col, fog);
+      float alpha = uOpacity * (0.20 + 0.80 * fog);
+
+      if (uGrainIntensity > 0.0) {
+        float g = hash2(gl_FragCoord.xy + fract(t * 0.07)) * 2.0 - 1.0;
+        col    += g * uGrainIntensity;
+      }
+
+      col *= uBrightness;
+      col  = clamp(col, 0.0, 1.0);
+
+      fragColor = vec4(col, alpha);
+    }
+    `;
+
+    /* Preset Palettes for GradientWaves */
+    const PALETTES = [
+      {
+        name: 'Cyber Waves',
+        horizonColor: '#5227FF',
+        waveColor: '#FF9FFC',
+        crestColor: '#FFFFFF'
+      },
+      {
+        name: 'Deep Cosmos',
+        horizonColor: '#0a0026',
+        waveColor: '#6366f1',
+        crestColor: '#38bdf8'
+      },
+      {
+        name: 'Electric Sunset',
+        horizonColor: '#3b0764',
+        waveColor: '#ec4899',
+        crestColor: '#fbbf24'
+      }
+    ];
+    let currentPaletteIndex = 0;
+
+    /* Exact Props from User Specification */
+    const props = {
+      horizonColor:     PALETTES[0].horizonColor,
+      waveColor:        PALETTES[0].waveColor,
+      crestColor:       PALETTES[0].crestColor,
+      speed:            0.4,
+      amplitude:        2.5,
+      waveScale:        0.6,
+      waveRatio:        0.9,
+      swell:            35,
+      turbulence:       20,
+      tilt:             1.11,
+      zoom:             1.0,
+      height:           5.5,
+      fogDepth:         15,
+      detail:           'medium',
+      brightness:       1.0,
+      opacity:          1.0,
+      mouseInteraction: true,
+      parallaxStrength: 0.5,
+      grain:            true,
+      grainIntensity:   0.05,
+    };
+
+    /* Initialize OGL Renderer */
+    const canvas = document.getElementById('waves-canvas');
+    let renderer, gl, program, mesh;
+
+    try {
+      renderer = new Renderer({ canvas, alpha: true, antialias: false, powerPreference: 'high-performance' });
+      gl = renderer.gl;
+      gl.clearColor(0, 0, 0, 0);
+
+      const geometry = new Triangle(gl);
+      program = new Program(gl, {
+        vertex,
+        fragment,
+        uniforms: {
+          iResolution:       { value: [gl.canvas.width, gl.canvas.height] },
+          iTime:             { value: 0 },
+          uSpeed:            { value: props.speed },
+          uAmplitude:        { value: props.amplitude },
+          uWaveScale:        { value: props.waveScale },
+          uWaveRatio:        { value: props.waveRatio },
+          uSwell:            { value: props.swell },
+          uTurbulence:       { value: props.turbulence },
+          uTilt:             { value: props.tilt },
+          uZoom:             { value: props.zoom },
+          uHeight:           { value: props.height },
+          uFogDepth:         { value: props.fogDepth },
+          uSteps:            { value: detailToSteps(props.detail) },
+          uBrightness:       { value: props.brightness },
+          uOpacity:          { value: props.opacity },
+          uHorizonColor:     { value: hexToRgb(props.horizonColor) },
+          uWaveColor:        { value: hexToRgb(props.waveColor) },
+          uCrestColor:       { value: hexToRgb(props.crestColor) },
+          uMouse:            { value: [0, 0] },
+          uParallaxStrength: { value: props.parallaxStrength },
+          uGrainIntensity:   { value: props.grain ? props.grainIntensity : 0.0 },
+        },
+      });
+
+      mesh = new Mesh(gl, { geometry, program });
+
+      function resize() {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        program.uniforms.iResolution.value = [gl.canvas.width, gl.canvas.height];
+      }
+      window.addEventListener('resize', resize);
+      resize();
+
+      if (props.mouseInteraction) {
+        window.addEventListener('mousemove', (e) => {
+          program.uniforms.uMouse.value = [
+            (e.clientX / window.innerWidth) * 2 - 1,
+            -((e.clientY / window.innerHeight) * 2 - 1),
+          ];
+        });
+      }
+
+      const t0 = performance.now();
+      function renderFrame() {
+        requestAnimationFrame(renderFrame);
+        program.uniforms.iTime.value = (performance.now() - t0) * 0.001;
+        renderer.render({ scene: mesh });
+      }
+      renderFrame();
+
+    } catch (err) {
+      console.warn("GradientWaves WebGL initialization error or not supported:", err);
+    }
+
+    /* Palette Switcher Button */
+    const paletteBtn = document.getElementById('palette-btn');
+    const paletteName = document.getElementById('palette-name');
+
+    paletteBtn.addEventListener('click', () => {
+      currentPaletteIndex = (currentPaletteIndex + 1) % PALETTES.length;
+      const pal = PALETTES[currentPaletteIndex];
+      paletteName.textContent = pal.name;
+      if (program) {
+        program.uniforms.uHorizonColor.value = hexToRgb(pal.horizonColor);
+        program.uniforms.uWaveColor.value = hexToRgb(pal.waveColor);
+        program.uniforms.uCrestColor.value = hexToRgb(pal.crestColor);
+      }
+    });
+
+    /* Expose pulse boost for Gemini thinking */
+    window.setThinkingWaves = function(isThinking) {
+      if (!program) return;
+      program.uniforms.uSpeed.value = isThinking ? 0.75 : props.speed;
+      program.uniforms.uAmplitude.value = isThinking ? 3.2 : props.amplitude;
+      program.uniforms.uBrightness.value = isThinking ? 1.25 : props.brightness;
+    };
+  </script>
+
+  <!-- ========================================================================
+       5. CHAT INTERACTION SCRIPT
+       ======================================================================== -->
+  <script>
+    const chatStream = document.getElementById('chat-stream');
+    const welcomeHero = document.getElementById('welcome-hero');
+    const textarea = document.getElementById('user-textarea');
+    const sendBtn = document.getElementById('send-btn');
+    const micBtn = document.getElementById('mic-btn');
+    const newChatBtn = document.getElementById('new-chat-btn');
+    const inspireBtn = document.getElementById('inspire-btn');
+    const scrollBottomBtn = document.getElementById('scroll-bottom-btn');
+    const promptCards = document.querySelectorAll('.prompt-card');
+
+    // Auto-expand textarea height
+    textarea.addEventListener('input', () => {
+      textarea.style.height = 'auto';
+      const newHeight = Math.min(textarea.scrollHeight, 160);
+      textarea.style.height = newHeight + 'px';
+      sendBtn.disabled = textarea.value.trim().length === 0;
+    });
+
+    textarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        submitMessage();
+      }
+    });
+
+    sendBtn.addEventListener('click', submitMessage);
+
+    // Suggestion Cards
+    promptCards.forEach(card => {
+      card.addEventListener('click', () => {
+        const text = card.getAttribute('data-prompt');
+        if (text) {
+          textarea.value = text;
+          textarea.dispatchEvent(new Event('input'));
+          submitMessage();
+        }
+      });
+    });
+
+    // Inspiration Prompts
+    const INSPIRATION_PROMPTS = [
+      "Tell me a fascinating fact about deep space that sounds like science fiction.",
+      "Write a short, inspiring poem about the birth of artificial intelligence.",
+      "Give me 3 creative brainstorming techniques to solve difficult problems.",
+      "Create a quick recipe for a healthy, delicious dinner using whatever is in the fridge.",
+      "Explain how neural networks learn like the human brain."
+    ];
+    let inspireIndex = 0;
+    inspireBtn.addEventListener('click', () => {
+      textarea.value = INSPIRATION_PROMPTS[inspireIndex % INSPIRATION_PROMPTS.length];
+      inspireIndex++;
+      textarea.dispatchEvent(new Event('input'));
+      textarea.focus();
+    });
+
+    // Scroll to bottom helper
+    chatStream.addEventListener('scroll', () => {
+      const distFromBottom = chatStream.scrollHeight - chatStream.scrollTop - chatStream.clientHeight;
+      scrollBottomBtn.style.display = distFromBottom > 150 ? 'inline-flex' : 'none';
+    });
+
+    scrollBottomBtn.addEventListener('click', () => {
+      chatStream.scrollTo({ top: chatStream.scrollHeight, behavior: 'smooth' });
+    });
+
+    // Reset Chat
+    newChatBtn.addEventListener('click', async () => {
+      try {
+        await fetch('/reset', { method: 'POST' });
+      } catch (err) {
+        console.warn('Reset request error:', err);
+      }
+      chatStream.innerHTML = '';
+      chatStream.appendChild(welcomeHero);
+      welcomeHero.classList.remove('hidden');
+      textarea.value = '';
+      textarea.style.height = 'auto';
+      sendBtn.disabled = true;
+      textarea.focus();
+    });
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    }
+
+    function formatMarkdown(text) {
+      if (!text) return '';
+
+      let codeBlocks = [];
+      let processed = text.replace(/```([a-zA-Z0-9_\-\+]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+        const id = 'code-' + Math.random().toString(36).substr(2, 9);
+        const language = lang.trim() || 'code';
+        const formattedCode = escapeHtml(code.trim());
+        const blockHtml = `
+          <div class="code-container">
+            <div class="code-header">
+              <span>${language}</span>
+              <button class="code-copy-btn" onclick="copyCodeBlock('${id}')">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                  <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                </svg>
+                Copy code
+              </button>
+            </div>
+            <pre><code id="${id}">${formattedCode}</code></pre>
+          </div>`;
+        codeBlocks.push(blockHtml);
+        return `@@CODE_BLOCK_${codeBlocks.length - 1}@@`;
+      });
+
+      processed = processed.replace(/`([^`]+)`/g, (match, c) => `<code>${escapeHtml(c)}</code>`);
+      processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+      processed = processed.replace(/\*(.+?)\*/g, '<em>$1</em>');
+      processed = processed.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+      processed = processed.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+      processed = processed.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+      processed = processed.replace(/^\s*[\-\*]\s+(.*)$/gim, '<li>$1</li>');
+      processed = processed.replace(/(<li>.*<\/li>)/gim, '<ul>$1</ul>');
+      processed = processed.replace(/\n{2,}/g, '</p><p>');
+      processed = processed.replace(/\n/g, '<br>');
+      processed = `<p>${processed}</p>`;
+      processed = processed.replace(/<p><\/p>/g, '');
+      processed = processed.replace(/<p>(<h[1-3]>.*?<\/h[1-3]>)<\/p>/g, '$1');
+      processed = processed.replace(/<p>(<ul>.*?<\/ul>)<\/p>/g, '$1');
+
+      codeBlocks.forEach((block, index) => {
+        processed = processed.replace(`@@CODE_BLOCK_${index}@@`, block);
+      });
+
+      return processed;
+    }
+
+    window.copyCodeBlock = function(id) {
+      const codeEl = document.getElementById(id);
+      if (!codeEl) return;
+      navigator.clipboard.writeText(codeEl.innerText).then(() => {
+        const btn = codeEl.closest('.code-container').querySelector('.code-copy-btn');
+        if (btn) {
+          const original = btn.innerHTML;
+          btn.innerHTML = `✓ Copied!`;
+          btn.style.color = '#34d399';
+          setTimeout(() => {
+            btn.innerHTML = original;
+            btn.style.color = '';
+          }, 2000);
+        }
+      });
+    };
+
+    function appendUserMessage(text) {
+      welcomeHero.classList.add('hidden');
+
+      const row = document.createElement('div');
+      row.className = 'message-row user-row';
+
+      const content = document.createElement('div');
+      content.className = 'message-content-wrapper';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble user-bubble';
+      bubble.textContent = text;
+
+      content.appendChild(bubble);
+
+      const avatar = document.createElement('div');
+      avatar.className = 'message-avatar avatar-user';
+      avatar.textContent = 'You';
+
+      row.appendChild(content);
+      row.appendChild(avatar);
+
+      chatStream.appendChild(row);
+      chatStream.scrollTop = chatStream.scrollHeight;
+    }
+
+    function showThinkingIndicator() {
+      if (window.setThinkingWaves) window.setThinkingWaves(true);
+
+      const row = document.createElement('div');
+      row.className = 'message-row';
+      row.id = 'gemini-thinking-indicator';
+
+      const avatar = document.createElement('div');
+      avatar.className = 'message-avatar avatar-gemini';
+      avatar.innerHTML = `
+        <svg viewBox="0 0 24 24">
+          <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z" />
+        </svg>
+      `;
+
+      const content = document.createElement('div');
+      content.className = 'message-content-wrapper';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble gemini-bubble thinking-bubble';
+      bubble.innerHTML = `
+        <div style="display:flex; gap:5px;">
+          <div class="wave-dot"></div>
+          <div class="wave-dot"></div>
+          <div class="wave-dot"></div>
+        </div>
+        <span class="thinking-text">Gemini is thinking...</span>
+      `;
+
+      content.appendChild(bubble);
+      row.appendChild(avatar);
+      row.appendChild(content);
+
+      chatStream.appendChild(row);
+      chatStream.scrollTop = chatStream.scrollHeight;
+    }
+
+    function removeThinkingIndicator() {
+      if (window.setThinkingWaves) window.setThinkingWaves(false);
+      const el = document.getElementById('gemini-thinking-indicator');
+      if (el) el.remove();
+    }
+
+    function appendGeminiResponse(rawText) {
+      const row = document.createElement('div');
+      row.className = 'message-row';
+
+      const avatar = document.createElement('div');
+      avatar.className = 'message-avatar avatar-gemini';
+      avatar.innerHTML = `
+        <svg viewBox="0 0 24 24">
+          <path d="M12 0C12 6.627 6.627 12 0 12C6.627 12 12 17.373 12 24C12 17.373 17.373 12 24 12C17.373 12 12 6.627 12 0Z" />
+        </svg>
+      `;
+
+      const content = document.createElement('div');
+      content.className = 'message-content-wrapper';
+
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble gemini-bubble';
+
+      const actions = document.createElement('div');
+      actions.className = 'message-actions';
+      actions.innerHTML = `
+        <button class="action-icon-btn copy-msg-btn" title="Copy response text">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+        </button>
+        <button class="action-icon-btn speak-msg-btn" title="Read aloud">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          </svg>
+        </button>
+      `;
+
+      actions.querySelector('.copy-msg-btn').addEventListener('click', (e) => {
+        navigator.clipboard.writeText(rawText).then(() => {
+          const btn = e.currentTarget;
+          btn.style.color = '#34d399';
+          setTimeout(() => { btn.style.color = ''; }, 2000);
+        });
+      });
+
+      actions.querySelector('.speak-msg-btn').addEventListener('click', () => {
+        if ('speechSynthesis' in window) {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(rawText.replace(/```[\s\S]*?```/g, 'Code block omitted.'));
+          utterance.rate = 1.05;
+          window.speechSynthesis.speak(utterance);
+        }
+      });
+
+      content.appendChild(bubble);
+      content.appendChild(actions);
+      row.appendChild(avatar);
+      row.appendChild(content);
+
+      chatStream.appendChild(row);
+
+      bubble.innerHTML = formatMarkdown(rawText);
+      chatStream.scrollTop = chatStream.scrollHeight;
+    }
+
+    async function submitMessage() {
+      const text = textarea.value.trim();
+      if (!text || sendBtn.disabled) return;
+
+      appendUserMessage(text);
+      textarea.value = '';
+      textarea.style.height = 'auto';
+      sendBtn.disabled = true;
+
+      showThinkingIndicator();
+
+      try {
+        const response = await fetch('/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: text })
+        });
+
+        const data = await response.json();
+        removeThinkingIndicator();
+
+        if (data.error) {
+          appendGeminiResponse(`**⚠️ Error:** ${escapeHtml(data.error)}`);
+        } else {
+          appendGeminiResponse(data.reply || "I didn't receive an answer. Please try again.");
+        }
+      } catch (err) {
+        removeThinkingIndicator();
+        appendGeminiResponse(`**⚠️ Network Connection Error:** Could not connect to the Gemini backend server.`);
+      } finally {
+        sendBtn.disabled = false;
+        textarea.focus();
+      }
+    }
+
+    // Web Speech API
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    let recognition = null;
+    let isRecording = false;
+
+    if (SpeechRecognition) {
+      recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        isRecording = true;
+        micBtn.classList.add('recording');
+        micBtn.title = 'Listening... Speak now';
+      };
+
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        textarea.value = transcript;
+        textarea.dispatchEvent(new Event('input'));
+      };
+
+      recognition.onerror = (event) => {
+        console.warn('Speech recognition error:', event.error);
+        stopRecording();
+      };
+
+      recognition.onend = () => {
+        stopRecording();
+      };
+    }
+
+    function stopRecording() {
+      isRecording = false;
+      micBtn.classList.remove('recording');
+      micBtn.title = 'Voice input (Speech to text)';
+    }
+
+    micBtn.addEventListener('click', () => {
+      if (!SpeechRecognition) {
+        alert('Voice input is not supported in this browser. Please use Chrome, Edge, or Safari.');
+        return;
+      }
+      if (isRecording) {
+        recognition.stop();
+        stopRecording();
+      } else {
+        try {
+          recognition.start();
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    });
+
+    // Fetch dynamic model status
+    fetch('/status')
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.model) {
+          const cleanModel = data.model.replace('gemini-', '').replace('-', ' ');
+          const badgeEl = document.getElementById('model-badge');
+          if (badgeEl) {
+            badgeEl.innerHTML = `<span class="status-dot"></span>${cleanModel}`;
+          }
+        }
+      })
+      .catch(err => console.log('Status fetch skipped:', err));
+
+    textarea.focus();
+  </script>
+</body>
+</html>
